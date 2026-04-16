@@ -2,7 +2,7 @@
 
 create table public.sessions (
   id uuid primary key default gen_random_uuid(),
-  machine_id text not null,
+  machine_id text not null unique,
   sdk_session_id text,
   project_path text,
   status text not null default 'idle',          -- idle | running | awaiting | errored | stopped

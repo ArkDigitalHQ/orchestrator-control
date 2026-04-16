@@ -3,7 +3,7 @@ RUN npm install -g pnpm@9.15.4
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY .npmrc package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/control-plane/package.json ./packages/control-plane/
 RUN pnpm install --frozen-lockfile --filter @orchestrator/control-plane...

@@ -57,9 +57,14 @@ export function startCommandsListener(): void {
           id: string;
           machine_id: string;
           command_type: CommandType;
-          payload: { decision_id: string; decision: "allow" | "deny"; message?: string };
+          payload: { decision_id: string; decision?: "allow" | "deny"; message?: string };
           status: string;
         };
+
+        // Skip commands inserted by the control-plane itself from a supervisor
+        // permission_request — those have no 'decision' field and are waiting for
+        // an operator response. Only forward dashboard-originated decisions.
+        if (!row.payload.decision) return;
 
         const sent = hub.send(row.machine_id, {
           type: "command",

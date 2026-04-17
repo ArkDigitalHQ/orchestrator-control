@@ -5,3 +5,5 @@ dist/
 *.log
 .pnpm-store/
 .DS_Store
+.env.secrets
+_tmp_*

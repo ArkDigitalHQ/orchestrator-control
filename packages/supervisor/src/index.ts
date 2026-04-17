@@ -304,6 +304,24 @@ async function startSession(): Promise<void> {
     // Drain the stream so hooks fire.
     for await (const _msg of session.stream()) {
       // Messages processed via hooks; nothing to do here.
+
+    }
+
+    // Stream ended naturally (Claude finished responding and is idle).
+    // Reset session so the next send() gets a live consumer, then restart.
+    if (session !== null) {
+      session = null;
+      conn.send({
+        type: "status_update",
+        machine_id: env.MACHINE_ID,
+        status: "idle",
+        awaiting: null,
+        awaiting_detail: null,
+        last_message: "Session ready — waiting for prompt",
+      });
+      // Brief pause to avoid a tight restart loop if stream ends immediately.
+      await new Promise<void>((r) => setTimeout(r, 200));
+      startSession().catch(console.error);
     }
   } catch (err) {
     console.error("[supervisor] session error:", err);

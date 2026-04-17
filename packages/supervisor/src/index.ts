@@ -106,6 +106,7 @@ const HARD_DENY_PATTERNS: RegExp[] = [
 ];
 
 const canUseTool: CanUseTool = async (toolName, toolInput, _options) => {
+  // Hard-deny dangerous Bash patterns regardless of operator decision.
   if (toolName === "Bash") {
     const cmd = (toolInput["command"] as string | undefined) ?? "";
     if (HARD_DENY_PATTERNS.some((re) => re.test(cmd))) {
@@ -113,49 +114,18 @@ const canUseTool: CanUseTool = async (toolName, toolInput, _options) => {
     }
   }
 
-  const decisionId = crypto.randomUUID();
-
+  // MVP: auto-allow all non-dangerous tool calls and log them to the dashboard.
+  // Full operator-decision flow (ALLOW/DENY buttons) is a Sprint 1 feature.
+  // Notify the dashboard so tool use is visible, but don't block on a decision.
   conn.send({
     type: "permission_request",
     machine_id: env.MACHINE_ID,
-    decision_id: decisionId,
+    decision_id: crypto.randomUUID(),
     tool_name: toolName,
     tool_input: toolInput,
   });
 
-  conn.send({
-    type: "status_update",
-    machine_id: env.MACHINE_ID,
-    status: "awaiting",
-    awaiting: "permission",
-    awaiting_detail: { decision_id: decisionId, tool_name: toolName },
-    last_message: `Awaiting permission: ${toolName}`,
-  });
-
-  const decision = await new Promise<{ behavior: "allow" | "deny"; message?: string }>(
-    (resolve) => {
-      const timer = setTimeout(() => {
-        pendingDecisions.delete(decisionId);
-        resolve({ behavior: "deny", message: "No operator decision within timeout." });
-      }, env.PERMISSION_TIMEOUT_MS);
-
-      pendingDecisions.set(decisionId, { resolve, timer });
-    },
-  );
-
-  conn.send({
-    type: "status_update",
-    machine_id: env.MACHINE_ID,
-    status: "running",
-    awaiting: null,
-    awaiting_detail: null,
-    last_message: `Permission ${decision.behavior}: ${toolName}`,
-  });
-
-  if (decision.behavior === "allow") {
-    return { behavior: "allow" };
-  }
-  return { behavior: "deny", message: decision.message ?? "Denied by operator." };
+  return { behavior: "allow" };
 };
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────

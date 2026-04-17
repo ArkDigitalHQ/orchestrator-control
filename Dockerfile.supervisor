@@ -1,0 +1,27 @@
+FROM node:22-slim AS base
+RUN npm install -g pnpm@9.15.4
+WORKDIR /app
+
+FROM base AS deps
+COPY .npmrc package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/supervisor/package.json ./packages/supervisor/
+RUN pnpm install --frozen-lockfile --filter @orchestrator/supervisor...
+
+FROM deps AS build
+COPY tsconfig.base.json ./
+COPY packages/shared ./packages/shared
+COPY packages/supervisor ./packages/supervisor
+RUN pnpm --filter @orchestrator/shared build
+RUN pnpm --filter @orchestrator/supervisor build
+
+FROM node:22-slim AS runner
+WORKDIR /app
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=build /app/packages/supervisor/dist ./packages/supervisor/dist
+COPY --from=build /app/packages/supervisor/package.json ./packages/supervisor/package.json
+
+ENV NODE_ENV=production
+CMD ["node", "packages/supervisor/dist/index.js"]

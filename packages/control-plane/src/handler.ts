@@ -126,6 +126,7 @@ async function drainPendingCommands(machineId: string): Promise<void> {
     .select("*")
     .eq("machine_id", machineId)
     .in("status", ["pending"])
+    .neq("command_type", "permission_decision")
     .order("created_at", { ascending: true })
     .limit(10);
 
